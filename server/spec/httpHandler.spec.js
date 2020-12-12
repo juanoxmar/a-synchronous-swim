@@ -5,6 +5,7 @@ const expect = require('chai').expect;
 const server = require('./mockServer');
 
 const httpHandler = require('../js/httpHandler');
+const messageQueue = require('../js/messageQueue');
 
 
 
@@ -22,13 +23,27 @@ describe('server responses', () => {
   });
 
   it('should respond to a GET request for a swim command', (done) => {
-    // write your test here
+    let {req, res} = server.mock('/move', 'GET');
+
+    const directions = ['up', 'down', 'left', 'right'];
+    const random = Math.floor(Math.random() * 4);
+
+    messageQueue.enqueue(directions[random]);
+
+    httpHandler.router(req, res);
+
+    expect(res._responseCode).to.equal(200);
+    expect(directions.includes(res._data.toString())).to.be.true;
+
     done();
   });
 
   xit('should respond with 404 to a GET request for a missing background image', (done) => {
     httpHandler.backgroundImageFile = path.join('.', 'spec', 'missing.jpg');
-    let {req, res} = server.mock('FILL_ME_IN', 'GET');
+    console.log(httpHandler.backgroundImageFile);
+
+    let {req, res} = server.mock('/background.jpg', 'GET');
+
 
     httpHandler.router(req, res, () => {
       expect(res._responseCode).to.equal(404);
@@ -37,9 +52,17 @@ describe('server responses', () => {
     });
   });
 
-  xit('should respond with 200 to a GET request for a present background image', (done) => {
-    // write your test here
-    done();
+  it('should respond with 200 to a GET request for a present background image', (done) => {
+
+    httpHandler.backgroundImageFile = path.join('.', 'background.jpg');
+
+    let {req, res} = server.mock('/background.jpg', 'GET');
+
+    httpHandler.router(req, res, () => {
+      expect(res._responseCode).to.equal(200);
+      expect(res._ended).to.equal(true);
+      done();
+    });
   });
 
   var postTestFile = path.join('.', 'spec', 'water-lg.jpg');
@@ -47,7 +70,7 @@ describe('server responses', () => {
   xit('should respond to a POST request to save a background image', (done) => {
     fs.readFile(postTestFile, (err, fileData) => {
       httpHandler.backgroundImageFile = path.join('.', 'spec', 'temp.jpg');
-      let {req, res} = server.mock('FILL_ME_IN', 'POST', fileData);
+      let {req, res} = server.mock('/', 'POST', fileData);
 
       httpHandler.router(req, res, () => {
         expect(res._responseCode).to.equal(201);
